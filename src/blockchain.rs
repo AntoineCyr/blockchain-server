@@ -20,7 +20,7 @@ pub struct BlockchainData {
 }
 
 impl Blockchain {
-    pub fn get_balance(&self,address:String) -> i32 {
+    pub fn get_balance(&mut self,address:String) -> i32 {
         return match self.blockchain_data.state.get(&address) {
             Some(&number) => number,
             _ => -1,
@@ -88,7 +88,7 @@ impl Blockchain {
         Ok(())
     }
 
-    pub fn run_blockchain(self) -> Result<()>{
+    pub fn run_blockchain(&mut self) -> Result<()>{
         let mut now = SystemTime::now();
         //bc.add_block()?;
         //bc.clear();

@@ -1,6 +1,6 @@
 use std::net::TcpStream;
 use std::str;
-use std::io::{self,BufRead,BufReader,Write};
+use std::io::{BufRead,BufReader,Write};
 use crate::errors::Result;
 
 

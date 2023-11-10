@@ -4,6 +4,9 @@ use std::io::{Read,Write};
 use std::str;
 use crate::errors::Result;
 use crate::blockchain::Blockchain;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use std::thread::sleep;
 
 
 pub struct Server{
@@ -19,36 +22,48 @@ impl Server{
     }
 
 pub fn run_server(&self) {
-    fn handle_client(mut stream: TcpStream) -> Result<()> {
-        let mut bc= Blockchain::create_blockchain()?;
+    fn handle_client(mut stream: TcpStream,bc: Arc<Mutex<Blockchain>>) -> Result<()> {
         println!("Incoming connection from: {}", stream.peer_addr()?);
         let mut buf = [0;512];
-        loop {
-            let bytes_read = stream.read(&mut buf)?;
-            if bytes_read == 0 {return Ok(())}
-            //stream.write(&)?;
-            let parts = str::from_utf8(&buf)?.split("_");
-            let collection = parts.collect::<Vec<&str>>();
-            if collection.len() == 3{
-                let mut amount = String::from("");
-                for c in collection[2].chars() {
-                    if c.is_digit(10){
-                            amount.push(c);
-                    }
-                 };
-                bc.add_transaction(String::from(collection[0]), String::from(collection[1]), amount.parse().unwrap())?;
-                stream.write("transaction added to mempool!".as_bytes()).expect("Failed to write response!");
-            }
-            else {
-            let address = collection[0];
-            let balance = bc.get_balance(String::from(address));
-            let output = format!("Balance of '{address}'; {balance} ");
-            stream.write(output.as_bytes()).expect("Failed to write response!");
+        let mut bc = bc.lock().unwrap();
+        stream.read(&mut buf).unwrap();
+        let parts = str::from_utf8(&buf).unwrap().split("_");
+        let collection = parts.collect::<Vec<&str>>();
+        if collection.len() == 3{
+            let mut amount = String::from("");
+            for c in collection[2].chars() {
+                if c.is_digit(10){
+                        amount.push(c);
+                }
+            };
+            let _ = bc.add_transaction(String::from(collection[0]), String::from(collection[1]), amount.parse().unwrap());
+            stream.write("transaction added to mempool!".as_bytes()).expect("Failed to write response!");
         }
-            stream.write(&[b'\n'])?;
-        }
+        else {
+            let mut address = String::from("");
+            for c in collection[0].chars() {
+                if c.is_alphanumeric(){
+                    address.push(c);
+                }
+            };
+        let balance = bc.get_balance(String::from(address.clone()));
+        let output = format!("Balance of '{address}'; {balance} ");
+        stream.write(output.as_bytes()).expect("Failed to write response!");
     }
-
+        let _ = stream.write(&[b'\n']);
+        Ok(())
+    }
+    
+    let bc= Blockchain::create_blockchain().unwrap();
+    let bc = Arc::new(Mutex::new(bc));
+    let bc2 = Arc::clone(&bc); 
+        thread::spawn(move|| {
+            loop {
+                sleep(Duration::new(10, 0));
+                let mut bc = bc.lock().unwrap();
+                let _ = bc.add_block();
+            }
+        });
 
 
     let listener = TcpListener::bind("0.0.0.0:8888").expect("Could not bind");
@@ -56,8 +71,9 @@ pub fn run_server(&self) {
         match stream {
             Err(e) => {eprintln!("failed: {}",e)}
             Ok(stream) => {
+                let bc = Arc::clone(&bc2); 
                 thread::spawn(move || {
-                    handle_client(stream).unwrap_or_else(|error| eprintln!("{:?}", error));
+                    handle_client(stream,bc).unwrap_or_else(|error| eprintln!("{:?}", error));
                 });
             }
         }
