@@ -10,9 +10,9 @@
   ```
 - Create wallet
   ```
-  cargo run create-account  <address>
+  cargo run create-account  <address> <amount>
   ```
-- transfer funds:
+- Transfer funds:
   ```
   cargo run transfer <from> <to> <amount>
   ```
