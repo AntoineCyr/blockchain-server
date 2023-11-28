@@ -1,6 +1,6 @@
 # Local Blockchain
 - Multithreading
-- Client server connection
+- Client server rpc connection
 
 ## usage
 
