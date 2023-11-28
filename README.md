@@ -1,4 +1,6 @@
-# blockchain-b -
+# Local Blockchain
+- Multithreading
+- Client server connection
 
 ## usage
 
